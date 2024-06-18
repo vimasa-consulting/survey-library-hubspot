@@ -1,0 +1,24 @@
+version: 1
+frontend:
+  phases:
+    preBuild:
+      commands:
+        - nvm use v16
+        - npm install
+    build:
+      commands:
+        - npm run build_core_prod
+        - npm run build_knockout_ui_prod
+    postBuild:
+      commands:
+        - mkdir -p public/survey-core/
+        - cp -r build/survey-core/ public/
+        - mkdir -p public/survey-knockout-ui/
+        - cp -r build/survey-knockout-ui/ public/
+  artifacts:
+    baseDirectory: public
+    files:
+      - '**/*'
+  cache:
+    paths:
+      - node_modules/**/*
