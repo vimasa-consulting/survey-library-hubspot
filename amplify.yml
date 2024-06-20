@@ -9,12 +9,15 @@ frontend:
       commands:
         - npm run build_core_prod
         - npm run build_knockout_ui_prod
+        - npm run build_knockout_prod
     postBuild:
       commands:
         - mkdir -p public/survey-core/
         - cp -r build/survey-core/ public/
         - mkdir -p public/survey-knockout-ui/
         - cp -r build/survey-knockout-ui/ public/
+        - mkdir -p public/survey-knockout/
+        - cp -r build/survey-knockout/ public/
   artifacts:
     baseDirectory: public
     files:
