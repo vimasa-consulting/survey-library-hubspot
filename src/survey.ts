@@ -848,6 +848,25 @@ export class SurveyModel extends SurveyElementCore
   public onElementWrapperComponentData: EventBase<SurveyModel, ElementWrapperComponentDataEvent> = this.addEvent<SurveyModel, ElementWrapperComponentDataEvent>();
   //#endregion
 
+  static customInit(options: {apiBaseURL?: string, surveyID: string, ko: any }): void {
+    if (options.apiBaseURL) {
+      settings.web.surveyServiceUrl = options.apiBaseURL;
+    } else {
+      settings.web.surveyServiceUrl = "https://staging.d19v2i26293l2w.amplifyapp.com/api";
+    }
+    const survey = new SurveyModel({ "surveyId": options.surveyID });
+    survey.onLoadedSurveyFromService.add(() => {
+      if (survey.jsonObj.themeJSON) {
+        survey.applyTheme(survey.jsonObj.themeJSON);
+      }
+    });
+    DomWindowHelper.getWindow().document.addEventListener("DOMContentLoaded", function () {
+      options.ko.applyBindings({
+        model: survey
+      });
+    });
+  }
+
   constructor(jsonObj: any = null, renderedElement: any = null) {
     super();
     if (DomDocumentHelper.isAvailable()) {
