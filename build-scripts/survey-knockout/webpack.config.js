@@ -10,7 +10,8 @@ const config = {
   entry: {
     survey: path.resolve(__dirname, "../../src/main.scss"),
     modern: path.resolve(__dirname, "../../src/modern.scss"),
-    defaultV2: path.resolve(__dirname, "../../src/defaultV2-theme/defaultV2.scss")
+    defaultV2: path.resolve(__dirname, "../../src/defaultV2-theme/defaultV2.scss"),
+    custom: path.resolve(__dirname, "../../src/custom-theme/custom.scss")
   },
   externals: {
     knockout: {
