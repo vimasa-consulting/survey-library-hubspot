@@ -13,6 +13,7 @@ export let defaultListCss = {
   searchClearButtonIcon: "sv-list__filter-clear-button",
   loadingIndicator: "sv-list__loading-indicator",
   itemSelected: "sv-list__item--selected",
+  itemGroup: "sv-list__item--group",
   itemWithIcon: "sv-list__item--with-icon",
   itemDisabled: "sv-list__item--disabled",
   itemFocused: "sv-list__item--focused",
@@ -192,12 +193,12 @@ export class ListModel<T extends BaseAction = Action> extends ActionContainer<T>
     if (this.allowSelection) {
       this.selectedItem = itemValue;
     }
+    if (!!this.onSelectionChanged) {
+      this.onSelectionChanged(itemValue);
+    }
     const action = (itemValue as IAction).action;
     if (!!action) {
       action(itemValue);
-    }
-    if (!!this.onSelectionChanged) {
-      this.onSelectionChanged(itemValue);
     }
   };
 
@@ -243,6 +244,7 @@ export class ListModel<T extends BaseAction = Action> extends ActionContainer<T>
       .append(this.cssClasses.itemDisabled, this.isItemDisabled(itemValue))
       .append(this.cssClasses.itemFocused, this.isItemFocused(itemValue))
       .append(this.cssClasses.itemSelected, this.isItemSelected(itemValue))
+      .append(this.cssClasses.itemGroup, itemValue.hasSubItems)
       .append(this.cssClasses.itemHovered, itemValue.isHovered)
       .append(this.cssClasses.itemTextWrap, this.textWrapEnabled)
       .append(itemValue.css)

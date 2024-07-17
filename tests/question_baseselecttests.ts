@@ -1311,6 +1311,8 @@ QUnit.test("Carry Forward and keepIncorrectValues, bug#6490", function (assert) 
 });
 QUnit.test("Check isUsingCarryForward on deleting question", function (assert) {
   const survey = new SurveyModel();
+  const defaultValueProp = Serializer.findProperty("dropdown", "defaultValue");
+  const correctAnswerProp = Serializer.findProperty("dropdown", "correctAnswer");
   survey.setDesignMode(true);
   survey.fromJSON({ elements: [
     { type: "dropdown", name: "q1", choices: ["B", "A", "D", "C"] },
@@ -1320,9 +1322,14 @@ QUnit.test("Check isUsingCarryForward on deleting question", function (assert) {
   const q2 = <QuestionSelectBase>survey.getQuestionByName("q2");
   assert.equal(q2.choicesFromQuestion, "q1", "set correctly");
   assert.equal(q2.isUsingCarryForward, true, "Carryforward flag is set");
+  assert.equal(defaultValueProp.isVisible("", q2), false, "defaultValueProp.isVisible #1");
+  assert.equal(correctAnswerProp.isVisible("", q2), false, "correctAnswerProp.isVisible #1");
+
   q1.delete();
   assert.notOk(q2.choicesFromQuestion, "it is empty");
   assert.equal(q2.isUsingCarryForward, false, "Carryforward flag is unset");
+  assert.equal(defaultValueProp.isVisible("", q2), true, "defaultValueProp.isVisible #2");
+  assert.equal(correctAnswerProp.isVisible("", q2), true, "correctAnswerProp.isVisible #2");
 });
 QUnit.test("Do not notify survey on changing newItem.value", function (
   assert
@@ -2118,4 +2125,64 @@ QUnit.test("dropdown.clearValue(true) for showCommentArea & showOtherItem, bug#8
   assert.equal(q3.comment, "abc", "q3.comment");
   assert.equal(q4.value, undefined, "q4.value");
   assert.notOk(q4.comment, "q4.comment");
+});
+QUnit.test("valuePropertyName & complete trigger, bug#8434", (assert) => {
+  const survey = new SurveyModel({
+    "pages": [
+      {
+        "name": "page1",
+        "elements": [
+          {
+            "type": "checkbox",
+            "name": "models",
+            "choices": [1, 2, 3],
+            "showNoneItem": true,
+            "valuePropertyName": "model_id"
+          }
+        ]
+      },
+      {
+        "name": "page2",
+        "elements": [
+          {
+            "type": "text",
+            "name": "question1"
+          }
+        ]
+      }
+    ],
+    "triggers": [
+      {
+        "type": "complete",
+        "expression": "{models-unwrapped} = ['none']"
+      }
+    ]
+  });
+  const q = <QuestionCheckboxModel>survey.getQuestionByName("models");
+  assert.equal(survey.calcIsCompleteButtonVisible(), false, "#1");
+  q.renderedValue = ["none"];
+  assert.equal(survey.calcIsCompleteButtonVisible(), true, "#2");
+  q.renderedValue = [1];
+  assert.equal(survey.calcIsCompleteButtonVisible(), false, "#3");
+  q.renderedValue = ["none"];
+  assert.equal(survey.calcIsCompleteButtonVisible(), true, "#4");
+});
+QUnit.test("Unselect none item, bug#8438", (assert) => {
+  const survey = new SurveyModel({
+    "elements": [
+      {
+        "type": "checkbox",
+        "name": "q1",
+        "choices": [1, 2, 3],
+        "showNoneItem": true
+      }
+    ]
+  });
+  const q = <QuestionCheckboxModel>survey.getQuestionByName("q1");
+  q.clickItemHandler(q.noneItem, true);
+  assert.deepEqual(q.value, ["none"], "#1");
+  q.clickItemHandler(q.noneItem, false);
+  assert.equal(q.isEmpty(), true, "#2");
+  q.clickItemHandler(q.noneItem, true);
+  assert.deepEqual(q.value, ["none"], "#3");
 });

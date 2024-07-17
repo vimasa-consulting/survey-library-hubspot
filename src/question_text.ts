@@ -65,7 +65,11 @@ export class QuestionTextModel extends QuestionTextBase {
   @property() inputTextAlignment: "left" | "right" | "auto";
 
   get maskTypeIsEmpty(): boolean {
-    return this.maskType === "none";
+    switch (this.inputType) {
+      case "tel":
+      case "text": return this.maskType === "none";
+      default: return true;
+    }
   }
 
   /**
@@ -100,6 +104,7 @@ export class QuestionTextModel extends QuestionTextBase {
       maskClassName = "masksettings";
     }
     const inputMask = Serializer.createClass(maskClassName);
+    inputMask.owner = this.survey;
     return inputMask;
   }
 
@@ -151,6 +156,7 @@ export class QuestionTextModel extends QuestionTextBase {
       this.max = undefined;
       this.step = undefined;
     }
+    this.updateMaskAdapter();
   }
   public getMaxLength(): any {
     if(!this.isTextInput) return null;
@@ -340,7 +346,24 @@ export class QuestionTextModel extends QuestionTextBase {
       this._inputValue = this.maskInstance.getMaskedValue(this.value);
     }
   }
-
+  private hasToConvertToUTC(val: any): boolean {
+    return settings.storeUtcDates && this.isDateTimeLocaleType() && !!val;
+  }
+  protected valueForSurveyCore(val: any): any {
+    if(this.hasToConvertToUTC(val)) {
+      val = new Date(val).toISOString();
+    }
+    return super.valueForSurveyCore(val);
+  }
+  protected valueFromDataCore(val: any): any {
+    if(this.hasToConvertToUTC(val)) {
+      const d = new Date(val);
+      const locale_d = new Date(d.getTime() - d.getTimezoneOffset() * 60 * 1000);
+      let res = locale_d.toISOString();
+      val = res.substring(0, res.length - 2);
+    }
+    return super.valueFromDataCore(val);
+  }
   protected onCheckForErrors(
     errors: Array<SurveyError>,
     isOnValueChanged: boolean
@@ -425,7 +448,10 @@ export class QuestionTextModel extends QuestionTextBase {
     );
   }
   private get isDateInputType(): boolean {
-    return this.inputType === "date" || this.inputType === "datetime-local";
+    return this.inputType === "date" || this.isDateTimeLocaleType();
+  }
+  private isDateTimeLocaleType(): boolean {
+    return this.inputType === "datetime-local";
   }
   private getCalculatedMinMax(minMax: any): any {
     if (this.isValueEmpty(minMax)) return minMax;
@@ -482,11 +508,10 @@ export class QuestionTextModel extends QuestionTextBase {
     return this.maskTypeIsEmpty ? super.getIsInputTextUpdate() : false;
   }
   supportGoNextPageAutomatic(): boolean {
-    return !this.getIsInputTextUpdate() &&
-      ["date", "datetime-local"].indexOf(this.inputType) < 0;
+    return !this.getIsInputTextUpdate() && !this.isDateInputType;
   }
   public supportGoNextPageError(): boolean {
-    return ["date", "datetime-local"].indexOf(this.inputType) < 0;
+    return !this.isDateInputType;
   }
   /**
    * An array of predefined options from which users can select. This property configures an HTML [`<datalist>`](https://developer.mozilla.org/en-US/docs/Web/HTML/Element/datalist) element and associates it with the underlying `input` element.
@@ -516,8 +541,12 @@ export class QuestionTextModel extends QuestionTextBase {
   }
   protected correctValueType(newValue: any): any {
     if (!newValue) return newValue;
-    if (this.inputType == "number" || this.inputType == "range") {
+    if (this.inputType === "number" || this.inputType === "range") {
       return Helpers.isNumber(newValue) ? Helpers.getNumber(newValue) : "";
+    }
+    if(this.inputType === "month") {
+      const d = new Date(newValue);
+      return d.getFullYear() + "-" + (d.getMonth() + 1);
     }
     return newValue;
   }
@@ -542,7 +571,7 @@ export class QuestionTextModel extends QuestionTextBase {
   private updateTextAlign(style: any) {
     if (this.inputTextAlignment !== "auto") {
       style.textAlign = this.inputTextAlignment;
-    } else if (this.maskSettings.getTextAlignment() !== "auto") {
+    } else if (!this.maskTypeIsEmpty && this.maskSettings.getTextAlignment() !== "auto") {
       style.textAlign = this.maskSettings.getTextAlignment();
     }
   }
@@ -771,7 +800,7 @@ Serializer.addClass(
       visibleIndex: 0,
       dependsOn: "inputType",
       visibleIf: (obj: any) => {
-        return obj.inputType === "text";
+        return obj.inputType === "text" || obj.inputType === "tel";
       }
     },
     {
@@ -780,7 +809,7 @@ Serializer.addClass(
       visibleIndex: 1,
       dependsOn: "inputType",
       visibleIf: (obj: any) => {
-        return obj.inputType === "text";
+        return obj.inputType === "text" || obj.inputType === "tel";
       },
       onGetValue: function (obj: any) {
         return obj.maskSettings.getData();

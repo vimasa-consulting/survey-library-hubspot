@@ -12,6 +12,7 @@ export var surveyCss: any = {
 
 export var defaultV2Css = {
   root: "sd-root-modern",
+  rootProgress: "sd-progress",
   rootMobile: "sd-root-modern--mobile",
   rootAnimationDisabled: "sd-root-modern--animation-disabled",
   rootReadOnly: "sd-root--readonly",
@@ -69,6 +70,7 @@ export var defaultV2Css = {
     titleExpanded: "sd-element__title--expanded",
     titleCollapsed: "sd-element__title--collapsed",
     titleDisabled: "sd-element__title--disabled",
+    titleHidden: "sd-element__title--hidden",
     titleOnExpand: "sd-panel__title--expanded",
     titleOnError: "sd-panel__title--error",
     titleBar: "sd-action-title-bar",
@@ -507,6 +509,7 @@ export var defaultV2Css = {
     tableWrapper: "sd-table-wrapper",
     rootAlternateRows: "sd-table--alternate-rows",
     cell: "sd-table__cell",
+    cellResponsiveTitle: "sd-table__responsive-title",
     errorsCell: "sd-table__cell--error",
     errorsCellTop: "sd-table__cell--error-top",
     errorsCellBottom: "sd-table__cell--error-bottom",
@@ -551,6 +554,7 @@ export var defaultV2Css = {
     rootAlternateRows: "sd-table--alternate-rows",
     content: "sd-matrixdynamic__content sd-question__content",
     cell: "sd-table__cell",
+    cellResponsiveTitle: "sd-table__responsive-title",
     row: "sd-table__row",
     rowFadeIn: "sd-table__row--fade-in",
     rowFadeOut: "sd-table__row--fade-out",

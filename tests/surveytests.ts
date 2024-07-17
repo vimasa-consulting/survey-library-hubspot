@@ -65,6 +65,7 @@ import { defaultV2Css } from "../src/defaultCss/defaultV2Css";
 import { StylesManager } from "../src/stylesmanager";
 import { ITheme } from "../src/themes";
 import { Cover } from "../src/header";
+import { DomWindowHelper } from "../src/global_variables_utils";
 
 export default QUnit.module("Survey");
 
@@ -938,6 +939,30 @@ QUnit.test("progressText, 'requiredQuestions' type and design mode", function (
   survey.progressBarType = "requiredQuestions";
   assert.equal(survey.getProgressTypeComponent(), "sv-progress-requiredquestions", "requiredQuestions component");
   assert.equal(survey.progressText, "Answered 0/2 questions");
+});
+QUnit.test("progressText, 'questions' type, invisible cells and data", function (
+  assert
+) {
+  var survey = new SurveyModel({
+    progressBarType: "questions",
+    elements: [
+      { type: "matrixdynamic", name: "matrix",
+        columns: [
+          { cellType: "text", name: "col1" },
+          { cellType: "boolean", name: "col2" },
+          { cellType: "text", name: "col3", visibleIf: "{row.col2}=true" },
+        ]
+      }
+    ]
+  });
+  survey.data = { matrix: [{ col1: "abc1", col2: true, col3: "edf1" }, { col1: "abc1", col2: false }] };
+  assert.equal(survey.progressText, "Answered 5/5 questions", "#1");
+  const matrix = survey.getQuestionByName("matrix");
+  const rows = matrix.visibleRows;
+  rows[1].getQuestionByName("col2").value = true;
+  assert.equal(survey.progressText, "Answered 5/6 questions", "#2");
+  rows[1].getQuestionByName("col3").value = "abc";
+  assert.equal(survey.progressText, "Answered 6/6 questions", "#3");
 });
 QUnit.test("progressText, 'requiredQuestions' type and required matrix dropdown, bug#5375", function (
   assert
@@ -6587,6 +6612,49 @@ QUnit.test("surveyId + clientId", function (assert) {
   assert.equal(q1.name, "q1", "The survey created from the string");
 });
 
+QUnit.test("surveyId + clientId several page render", function (assert) {
+  let log = "";
+  let curState = "";
+  const json = { questions: [{ type: "text", name: "q1" }] };
+  class dxSurveyServiceTester extends dxSurveyService {
+    public getSurveyJsonAndIsCompleted(surveyId: string, clientId: string, onLoad: (success: boolean, surveyJson: any, result: string, response: any) => void) {
+      if (onLoad) {
+        onLoad(true, json, clientId, "");
+      }
+    }
+  }
+  class SurveyTester extends SurveyModel {
+    protected createSurveyService(): dxSurveyService {
+      return new dxSurveyServiceTester();
+    }
+    protected propertyValueChanged(name: string, oldValue: any, newValue: any, arrayChanges?: ArrayChanges, target?: Base): void {
+      super.propertyValueChanged(name, oldValue, newValue, arrayChanges);
+      if (name === "isLoading" || name === "state" || name === "activePage") {
+        log += ("-> " + name + ":" + newValue);
+      }
+    }
+    protected onLoadSurveyFromService(): void {
+      super.onLoadSurveyFromService();
+      curState = this.state;
+      assert.equal(curState, "loading");
+    }
+    protected setPropertyValueDirectly(name: string, val: any): void {
+      if (name === "activePage" && !!val) {
+        assert.ok(this.activePage === undefined, "this.activePage undefined");
+        assert.ok(!!val, "new activePage");
+      }
+      super.setPropertyValueDirectly(name, val);
+    }
+  }
+
+  let survey = new SurveyTester({ surveyId: "surveyDummyId", clientId: "completed" });
+  assert.equal(survey.state, "completedbefore", "The survey is running");
+  assert.equal(log, "-> state:empty-> state:loading-> isLoading:true-> activePage:page1-> state:completedbefore-> isLoading:false");
+
+  let q1 = survey.getQuestionByName("q1");
+  assert.equal(q1.name, "q1", "The survey created from the string");
+});
+
 QUnit.test(
   "Question description and text processing, variable, Bug #632",
   function (assert) {
@@ -6896,6 +6964,54 @@ QUnit.test("Define questionTitleLocation on Panel/Page level", function (
   assert.equal(q.getTitleLocation(), "bottom", "get from question");
   q.titleLocation = "default";
   assert.equal(q.getTitleLocation(), "top", "get from survey again");
+});
+
+QUnit.test("Define questionTitleWidth on Panel/Page level", function (assert) {
+  const survey = new SurveyModel();
+  const page = survey.addNewPage("page");
+  const panel = page.addNewPanel("panel");
+  const panel2 = panel.addNewPanel("panel2");
+  const q = <Question>panel2.addNewQuestion("text");
+  page.questionTitleLocation = "left";
+
+  assert.equal(q.titleWidth, undefined, "init");
+  page.questionTitleWidth = "500px";
+  assert.equal(q.titleWidth, "500px", "get from page");
+
+  panel.questionTitleWidth = "50%";
+  assert.equal(q.titleWidth, "50%", "get from panel");
+
+  panel2.questionTitleWidth = "200px";
+  assert.equal(q.titleWidth, "200px", "get from panel2");
+
+  panel2.questionTitleWidth = "300";
+  assert.equal(q.titleWidth, "300px", "titleWidth with px");
+
+  q.titleLocation = "top";
+  assert.equal(q.titleWidth, undefined, "titleWidth available if titleLocation is left");
+});
+
+QUnit.test("availableQuestionTitleWidth on Panel/Page", function (assert) {
+  const survey = new SurveyModel();
+  const page = survey.addNewPage("page");
+  const panel = page.addNewPanel("panel");
+  const panel2 = panel.addNewPanel("panel2");
+  const q = <Question>panel.addNewQuestion("text");
+
+  assert.equal(page.availableQuestionTitleWidth(), false, "page");
+  assert.equal(panel.availableQuestionTitleWidth(), false, "panel1");
+  assert.equal(panel2.availableQuestionTitleWidth(), false, "panel2");
+
+  q.titleLocation = "left";
+  assert.equal(page.availableQuestionTitleWidth(), true, "page");
+  assert.equal(panel.availableQuestionTitleWidth(), true, "panel1");
+  assert.equal(panel2.availableQuestionTitleWidth(), false, "panel2");
+
+  q.titleLocation = "top";
+  page.questionTitleLocation = "left";
+  assert.equal(page.availableQuestionTitleWidth(), true, "page");
+  assert.equal(panel.availableQuestionTitleWidth(), true, "panel1");
+  assert.equal(panel2.availableQuestionTitleWidth(), true, "panel2");
 });
 
 QUnit.test("Question property.page getChoices", function (assert) {
@@ -14474,6 +14590,48 @@ QUnit.test("onTextRenderAs event", function (assert) {
   assert.equal(locString.renderAs, customRendererView);
   assert.equal(renderAs, customRendererView);
 });
+QUnit.test("onElementWrapperComponentName event vs string getRenderer", function (assert) {
+  const survey = new SurveyModel();
+  const questionName = "any question";
+  const locString = new LocalizableString(survey, false, "name");
+
+  let renderAs = survey.getRenderer(questionName);
+
+  const customRendererView = "my-custom-renderer-view";
+  const customRendererEdit = "my-custom-renderer-edit";
+  survey.onElementWrapperComponentName.add((s, e) => {
+    if (e.wrapperName !== "string") return;
+    if (s.isDesignMode) e.componentName = customRendererEdit;
+    else e.componentName = customRendererView;
+  });
+
+  renderAs = survey.getRenderer(questionName);
+  assert.equal(locString.renderAs, customRendererView);
+  assert.equal(renderAs, customRendererView);
+
+  survey.setDesignMode(true);
+  renderAs = survey.getRenderer(questionName);
+  assert.equal(locString.renderAs, customRendererEdit);
+  assert.equal(renderAs, customRendererEdit);
+
+  survey.setDesignMode(false);
+  renderAs = survey.getRenderer(questionName);
+  assert.equal(locString.renderAs, customRendererView);
+  assert.equal(renderAs, customRendererView);
+});
+QUnit.test("onElementWrapperComponentData event vs getRendererContextForString", function (assert) {
+  const survey = new SurveyModel();
+  survey.addNewPage("page1");
+  const locString = new LocalizableString(survey, false, "name");
+
+  survey.onElementWrapperComponentData.add((s, e) => {
+    if (e.wrapperName !== "string") return;
+    e.data = { str: e.data, el: e.element };
+  });
+  const res = survey.getRendererContextForString(survey.pages[0], locString);
+  assert.equal(res.str.name, "name", "string is correct");
+  assert.equal(res.el.name, "page1", "element is correct");
+});
 
 QUnit.test("Make inputs read-only in design-mode for V2", function (assert) {
   settings.supportCreatorV2 = true;
@@ -14917,16 +15075,16 @@ QUnit.test("onElementWrapperComponentName event", function (assert) {
   const q1 = survey.getQuestionByName("q1");
   const q2 = <QuestionCheckboxModel>survey.getQuestionByName("q2");
   survey.onElementWrapperComponentName.add((sender, options) => {
-    if(options.wrapperName === "component" && options.reason === "test1") {
+    if (options.wrapperName === "component" && options.reason === "test1") {
       options.componentName += "#1";
     }
-    if(options.wrapperName === "content-component" && options.reason === undefined) {
+    if (options.wrapperName === "content-component" && options.reason === undefined) {
       options.componentName += "#2";
     }
-    if(options.wrapperName === "row" && !!options.element.setIsLazyRendering) {
+    if (options.wrapperName === "row" && !!options.element.setIsLazyRendering) {
       options.componentName += "#3";
     }
-    if(options.wrapperName === "itemvalue" && options.item?.value === 1) {
+    if (options.wrapperName === "itemvalue" && options.item?.value === 1) {
       options.componentName += "#4";
     }
   });
@@ -14945,16 +15103,16 @@ QUnit.test("onElementWrapperComponentName event", function (assert) {
   const q2 = <QuestionCheckboxModel>survey.getQuestionByName("q2");
   const q3 = <QuestionMatrixDynamicModel>survey.getQuestionByName("q3");
   survey.onElementWrapperComponentData.add((sender, options) => {
-    if(options.wrapperName === "component" && options.reason === "test1") {
+    if (options.wrapperName === "component" && options.reason === "test1") {
       options.data = "#1";
     }
-    if(options.wrapperName === "row" && !!options.element.setIsLazyRendering) {
+    if (options.wrapperName === "row" && !!options.element.setIsLazyRendering) {
       options.data = "#2";
     }
-    if(options.wrapperName === "itemvalue" && options.item?.value === 1) {
+    if (options.wrapperName === "itemvalue" && options.item?.value === 1) {
       options.data = "#3";
     }
-    if(options.wrapperName === "cell" && options.element.name === "col1") {
+    if (options.wrapperName === "cell" && options.element.name === "col1") {
       options.data = "#4";
     }
   });
@@ -15389,16 +15547,40 @@ QUnit.test("survey.autoGrowComment", function (assert) {
     ]
   };
   let survey = new SurveyModel(json);
-  let comment1 = survey.getQuestionByName("comment1");
-  let comment2 = survey.getQuestionByName("comment2");
+  let comment1 = survey.getQuestionByName("comment1") as QuestionCommentModel;
+  let comment2 = survey.getQuestionByName("comment2") as QuestionCommentModel;
 
-  assert.equal(survey.autoGrowComment, true);
-  assert.equal(comment1.autoGrow, true);
-  assert.equal(comment2.autoGrow, true);
+  assert.equal(survey.autoGrowComment, true, "#1");
+  assert.equal(comment1.renderedAutoGrow, true, "#2");
+  assert.equal(comment2.renderedAutoGrow, true, "#3");
 
   survey.autoGrowComment = false;
-  assert.equal(comment1.autoGrow, false);
-  assert.equal(comment2.autoGrow, true);
+  assert.equal(comment1.renderedAutoGrow, false, "#4");
+  assert.equal(comment2.renderedAutoGrow, true, "#5");
+});
+QUnit.test("save comment autoGrow && autoResize", function (assert) {
+  let json = {
+    autoGrowComment: true,
+    pages: [
+      {
+        elements: [
+          {
+            type: "comment",
+            name: "q1",
+          }
+        ]
+      }
+    ]
+  };
+  let survey = new SurveyModel(json);
+  let question = survey.getQuestionByName("q1") as QuestionCommentModel;
+  assert.deepEqual(question.toJSON(), { name: "q1" }, "#1");
+  question.allowResize = false;
+  question.autoGrow = false;
+  assert.deepEqual(question.toJSON(), { name: "q1", allowResize: false, autoGrow: false }, "#2");
+  question.allowResize = true;
+  question.autoGrow = true;
+  assert.deepEqual(question.toJSON(), { name: "q1", allowResize: true, autoGrow: true }, "#3");
 });
 QUnit.test("survey.allowResizeComment", function (assert) {
   let json = {
@@ -15420,26 +15602,79 @@ QUnit.test("survey.allowResizeComment", function (assert) {
     ]
   };
   let survey = new SurveyModel(json);
-  let comment1 = survey.getQuestionByName("comment1");
-  let comment2 = survey.getQuestionByName("comment2");
+  let comment1 = survey.getQuestionByName("comment1") as QuestionCommentModel;
+  let comment2 = survey.getQuestionByName("comment2") as QuestionCommentModel;
 
   assert.equal(survey.allowResizeComment, false);
-  assert.equal(comment1.renderedAllowResize, false);
-  assert.equal(comment2.renderedAllowResize, false);
+  assert.equal(comment1.renderedAllowResize, false, "comment1 survey.allowResizeComment = false, #1");
+  assert.equal(comment2.renderedAllowResize, false, "comment2 survey.allowResizeComment = false, #2");
 
   survey.allowResizeComment = true;
-  assert.equal(comment1.renderedAllowResize, true);
-  assert.equal(comment2.renderedAllowResize, false);
+  assert.equal(comment1.renderedAllowResize, true, "comment1 survey.allowResizeComment = true, #3");
+  assert.equal(comment2.renderedAllowResize, false, "comment2 survey.allowResizeComment = true, #4");
 
   comment1.readOnly = true;
-  assert.equal(comment1.renderedAllowResize, false);
+  assert.equal(comment1.renderedAllowResize, false, "#5");
   comment1.readOnly = false;
 
   survey.showPreview();
   let comment1Preview = survey.getQuestionByName("comment1");
-  assert.equal(comment1Preview.renderedAllowResize, false);
-
+  assert.equal(comment1Preview.renderedAllowResize, false, "#6");
 });
+
+QUnit.test("survey.allowResizeComment & survey.autoGrowComment override this properties for individual properties", function (assert) {
+  let json = {
+    allowResizeComment: false,
+    autoGrowComment: false,
+    pages: [
+      {
+        elements: [
+          {
+            type: "comment",
+            name: "comment1",
+            autoGrow: true,
+            allowResize: true
+          },
+          {
+            type: "comment",
+            name: "comment2",
+          },
+          {
+            type: "comment",
+            name: "comment3",
+            autoGrow: false
+          }
+        ]
+      }
+    ]
+  };
+  let survey = new SurveyModel(json);
+  let comment1 = survey.getQuestionByName("comment1") as QuestionCommentModel;
+  let comment2 = survey.getQuestionByName("comment2") as QuestionCommentModel;
+  let comment3 = survey.getQuestionByName("comment3") as QuestionCommentModel;
+
+  assert.equal(comment1.renderedAllowResize, true, "comment1 survey.allowResizeComment = false, #1");
+  assert.equal(comment1.renderedAutoGrow, true, "comment1 survey.autoGrowComment = false, #2");
+  assert.equal(comment2.renderedAllowResize, false, "comment2 survey.allowResizeComment = false, #3");
+  assert.equal(comment2.renderedAutoGrow, false, "comment2 survey.autoGrowComment = false, #4");
+  assert.equal(comment3.renderedAutoGrow, false, "comment2 survey.autoGrowComment = false, #5");
+
+  survey.allowResizeComment = true;
+  survey.autoGrowComment = true;
+  assert.equal(comment1.renderedAllowResize, true, "comment1 survey.allowResizeComment = true, #6");
+  assert.equal(comment1.renderedAutoGrow, true, "comment1 survey.autoGrowComment = true, #7");
+  assert.equal(comment2.renderedAllowResize, true, "comment2 survey.allowResizeComment = true, #8");
+  assert.equal(comment2.renderedAutoGrow, true, "comment2 survey.autoGrowComment = true, #9");
+  assert.equal(comment3.renderedAutoGrow, false, "comment2 survey.autoGrowComment = true, #10");
+});
+
+QUnit.test("getDefaultPropertyValue for comment properties autoGrow & allowResize", function (assert) {
+  let comment = new QuestionCommentModel("q1");
+
+  assert.strictEqual(comment.getDefaultPropertyValue("autoGrow"), undefined, "autoGrow");
+  assert.strictEqual(comment.getDefaultPropertyValue("allowResize"), undefined, "allowResize");
+});
+
 QUnit.test("utils.increaseHeightByContent", assert => {
   let element = {
     getBoundingClientRect: () => { return { height: 50, width: 100, x: 10, y: 10 }; },
@@ -16182,7 +16417,7 @@ QUnit.test("Check rootCss property", function (assert) {
     ]
   });
   survey.css = { root: "test-root-class" };
-  assert.equal(survey.rootCss, "test-root-class");
+  assert.equal(survey.rootCss, "test-root-class sv_progress--pages");
 });
 
 QUnit.test("Check navigation bar css update", function (assert) {
@@ -16208,32 +16443,32 @@ QUnit.test("Check survey getRootCss function - defaultV2Css", function (assert) 
     ]
   });
   survey.css = defaultV2Css;
-  assert.equal(survey.getRootCss(), "sd-root-modern sd-root-modern--full-container");
+  assert.equal(survey.getRootCss(), "sd-root-modern sd-progress--pages sd-root-modern--full-container");
 
   survey.fitToContainer = false;
-  assert.equal(survey.getRootCss(), "sd-root-modern");
+  assert.equal(survey.getRootCss(), "sd-root-modern sd-progress--pages");
 
   survey.setIsMobile(true);
   survey.fitToContainer = true;
-  assert.equal(survey.getRootCss(), "sd-root-modern sd-root-modern--mobile sd-root-modern--full-container");
+  assert.equal(survey.getRootCss(), "sd-root-modern sd-progress--pages sd-root-modern--mobile sd-root-modern--full-container");
 
   survey.fitToContainer = false;
-  assert.equal(survey.getRootCss(), "sd-root-modern sd-root-modern--mobile");
+  assert.equal(survey.getRootCss(), "sd-root-modern sd-progress--pages sd-root-modern--mobile");
 
   survey.mode = "display";
   survey.fitToContainer = true;
-  assert.equal(survey.getRootCss(), "sd-root-modern sd-root-modern--mobile sd-root--readonly sd-root-modern--full-container");
+  assert.equal(survey.getRootCss(), "sd-root-modern sd-progress--pages sd-root-modern--mobile sd-root--readonly sd-root-modern--full-container");
 
   survey.fitToContainer = false;
-  assert.equal(survey.getRootCss(), "sd-root-modern sd-root-modern--mobile sd-root--readonly");
+  assert.equal(survey.getRootCss(), "sd-root-modern sd-progress--pages sd-root-modern--mobile sd-root--readonly");
 
   survey.mode = "edit";
   survey.setIsMobile(false);
   survey["isCompact"] = true;
-  assert.equal(survey.getRootCss(), "sd-root-modern sd-root--compact");
+  assert.equal(survey.getRootCss(), "sd-root-modern sd-progress--pages sd-root--compact");
 
   survey.fitToContainer = true;
-  assert.equal(survey.getRootCss(), "sd-root-modern sd-root--compact sd-root-modern--full-container");
+  assert.equal(survey.getRootCss(), "sd-root-modern sd-progress--pages sd-root--compact sd-root-modern--full-container");
   settings.animationEnabled = false;
 });
 
@@ -17869,6 +18104,30 @@ QUnit.test("getStructuredData function", function (assert) {
   }, "includePages: false, level: 3");
 
 });
+QUnit.test("getData function", function (assert) {
+  const survey = new SurveyModel(structedDataSurveyJSON);
+  survey.setValue("q1", 100);
+  survey.setValue("q2", 200);
+  survey.setValue("q3", 300);
+  survey.setValue("q21", 2100);
+  survey.setValue("q22", 2200);
+  const data = survey.data;
+  assert.deepEqual(survey.getData(), data, "survey.getData()");
+  assert.deepEqual(survey.getData({}), data, "survey.getData({})");
+  assert.deepEqual(survey.getData({ includePages: false, includePanels: false }), data, "survey.getData({ includePages: false, includePanels: false })");
+  assert.deepEqual(survey.getData({ includePages: true, includePanels: false }), {
+    page1: { q1: 100, q2: 200, q3: 300 },
+    page2: { q21: 2100, q22: 2200 },
+  }, "survey.getData({ includePages: true, includePanels: false })");
+  assert.deepEqual(survey.getData({ includePages: true, includePanels: true }), {
+    page1: { q1: 100, panel1: { q2: 200, panel2: { q3: 300 } } },
+    page2: { q21: 2100, panel21: { q22: 2200 } },
+  }, "survey.getData({ includePages: true, includePanels: true })");
+  assert.deepEqual(survey.getData({ includePages: false, includePanels: true }), {
+    q1: 100, panel1: { q2: 200, panel2: { q3: 300 } },
+    q21: 2100, panel21: { q22: 2200 },
+  }, "survey.getData({ includePages: true, includePanels: true })");
+});
 QUnit.test("setStructuredData function", function (assert) {
   const survey = new SurveyModel(structedDataSurveyJSON);
   survey.setStructuredData({
@@ -18128,7 +18387,7 @@ QUnit.test("getContainerContent - header elements order", function (assert) {
     container: "header",
     component: "sv-custom",
   });
-  survey.applyTheme({ header: {} } as any);
+  survey.applyTheme({ "headerView": "advanced" } as any);
 
   assert.deepEqual(getContainerContent("header"), [
     {
@@ -18143,6 +18402,18 @@ QUnit.test("getContainerContent - header elements order", function (assert) {
       "id": "custom"
     }
   ], "advanved header first, progress next");
+});
+
+QUnit.test("restore header css variable if header is default", function (assert) {
+  const json = {
+    title: "Title",
+    elements: [{ "type": "rating", "name": "satisfaction" }]
+  };
+  let survey = new SurveyModel(json);
+  survey.applyTheme({ "headerView": "advanced", cssVariables: { "--sjs-header-backcolor": "transparent" } } as any);
+
+  const cover = survey.findLayoutElement("advanced-header").data as Cover;
+  assert.equal(cover.headerClasses, "sv-header sv-header__without-background sv-header__background-color--none");
 });
 
 QUnit.test("check title classes when readOnly changed", function (assert) {
@@ -19605,7 +19876,7 @@ QUnit.test("Display mode in design time", function (assert) {
   assert.equal(survey.css.rootReadOnly, "sd-root--readonly");
   assert.equal(survey.mode, "edit");
   assert.equal(survey.isDisplayMode, false);
-  assert.equal(survey.getRootCss(), "sd-root-modern sd-root-modern--full-container");
+  assert.equal(survey.getRootCss(), "sd-root-modern sd-progress--pages sd-root-modern--full-container");
 
   survey.mode = "display";
   assert.equal(survey.mode, "display");
@@ -19615,7 +19886,7 @@ QUnit.test("Display mode in design time", function (assert) {
   survey.setDesignMode(true);
   assert.equal(survey.mode, "display");
   assert.equal(survey.isDisplayMode, false);
-  assert.equal(survey.getRootCss(), "sd-root-modern sd-root-modern--full-container");
+  assert.equal(survey.getRootCss(), "sd-root-modern sd-progress--pages sd-root-modern--full-container");
   settings.animationEnabled = false;
 });
 
@@ -19863,7 +20134,7 @@ QUnit.test("getContainerContent - do not show buttons progress in the single pag
   assert.deepEqual(getContainerContent("left"), [], "");
   assert.deepEqual(getContainerContent("right"), [], "");
 });
-QUnit.test("Display mode in design time", function (assert) {
+QUnit.test("Display mode in design time 2", function (assert) {
   const survey = new SurveyModel();
   assert.equal(survey.wrapperFormCss, "sd-root-modern__wrapper");
 
@@ -19872,4 +20143,71 @@ QUnit.test("Display mode in design time", function (assert) {
 
   survey.backgroundImageAttachment = "fixed";
   assert.equal(survey.wrapperFormCss, "sd-root-modern__wrapper sd-root-modern__wrapper--has-image sd-root-modern__wrapper--fixed");
+});
+QUnit.test("Delete panel with questions", (assert) => {
+  const survey = new SurveyModel({
+    "elements": [
+      {
+        "type": "panel",
+        "name": "panel1",
+        "elements": [
+          {
+            "type": "text",
+            "name": "question1"
+          },
+          {
+            "type": "text",
+            "name": "question2"
+          }
+        ]
+      },
+    ]
+  });
+  assert.ok(survey.getPanelByName("panel1"), "#1");
+  assert.ok(survey.getQuestionByName("question1"), "#2");
+  assert.ok(survey.getQuestionByName("question2"), "#3");
+  survey.getQuestionByName("question2").delete();
+  assert.notOk(survey.getQuestionByName("question2"), "#4");
+  survey.getPanelByName("panel1").delete();
+  assert.notOk(survey.getPanelByName("panel1"), "#5");
+  assert.notOk(survey.getQuestionByName("question1"), "#6");
+});
+QUnit.test("_isElementShouldBeSticky", (assert) => {
+  const survey = new SurveyModel({});
+  const topStickyContainer: any = {
+    getBoundingClientRect: () => ({ y: 64 })
+  };
+  const rootElement: any = {
+    getBoundingClientRect: () => ({ y: 64 }),
+    querySelector: () => topStickyContainer,
+    scrollTop: 0
+  };
+  survey.rootElement = rootElement;
+
+  assert.notOk(survey._isElementShouldBeSticky(".test"), "no scrolling");
+
+  rootElement.scrollTop = 50;
+  assert.ok(survey._isElementShouldBeSticky(".test"), "content is scrolled");
+
+  assert.notOk(survey._isElementShouldBeSticky(""), "empty selector - always false (with scroll)");
+
+  rootElement.scrollTop = 0;
+  assert.notOk(survey._isElementShouldBeSticky(""), "empty selector - always false (no scroll)");
+});
+QUnit.test("survey navigateToUrl encode url", function (assert) {
+  var survey = new SurveyModel({
+    questions: [
+      {
+        type: "text",
+        name: "q1",
+      }
+    ],
+    "navigateToUrl": "javascript:alert(2)",
+  });
+
+  const location: Location = {} as any;
+  DomWindowHelper.getLocation = <any>(() => location);
+
+  survey.doComplete();
+  assert.equal(location.href, "javascript%3Aalert(2)", "encoded URL");
 });

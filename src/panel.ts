@@ -407,9 +407,20 @@ export class PanelModelBase extends SurveyElement<Question>
     );
   }
   public delete(doDispose: boolean = true): void {
+    this.deletePanel();
     this.removeFromParent();
     if(doDispose) {
       this.dispose();
+    }
+  }
+  private deletePanel(): void {
+    const els = this.elements;
+    for(let i = 0; i < els.length; i ++) {
+      const el = els[i];
+      if(el.isPanel) {
+        (<PanelModelBase><any>el).deletePanel();
+      }
+      this.onRemoveElementNotifySurvey(el);
     }
   }
   protected removeFromParent(): void {}
@@ -869,6 +880,21 @@ export class PanelModelBase extends SurveyElement<Question>
       this.parent.validateContainerOnly();
     }
   }
+  onQuestionValueChanged(el: IElement): void {
+    const index = this.questions.indexOf(<any>el);
+    if(index < 0) return;
+    const dif = 5;
+    const max = this.questions.length - 1;
+    const start = index - dif > 0 ? index - dif : 0;
+    const end = index + dif < max ? index + dif : max;
+    for(let i = start; i <= end; i ++) {
+      if(i === index) continue;
+      const q = this.questions[i];
+      if(q.errors.length > 0 && q.validate(false)) {
+        q.validate(true);
+      }
+    }
+  }
   private hasErrorsInPanels(rec: any): void {
     var errors = <Array<any>>[];
     this.hasRequiredError(rec, errors);
@@ -1104,6 +1130,30 @@ export class PanelModelBase extends SurveyElement<Question>
     if (this.parent) return this.parent.getQuestionTitleLocation();
     return this.survey ? this.survey.questionTitleLocation : "top";
   }
+  availableQuestionTitleWidth(): boolean {
+    const questionTitleLocation = this.getQuestionTitleLocation();
+    if (questionTitleLocation === "left") return true;
+    return this.hasElementWithTitleLocationLeft();
+  }
+  hasElementWithTitleLocationLeft(): boolean {
+    const result = this.elements.some(el => {
+      if (el instanceof PanelModelBase) {
+        return el.hasElementWithTitleLocationLeft();
+      } else if (el instanceof Question) {
+        return el.getTitleLocation() === "left";
+      }
+    });
+    return result;
+  }
+  /**
+   * Sets consistent width for question titles in CSS values. Applies only when [`questionTitleLocation`](#questionTitleLocation) evaluates to `"left"`.
+   *
+   * Default value: `undefined`
+   */
+  @property() questionTitleWidth: string;
+  getQuestionTitleWidth(): string {
+    return this.questionTitleWidth || this.parent && this.parent.getQuestionTitleWidth();
+  }
   protected getStartIndex(): string {
     if (!!this.parent) return this.parent.getQuestionStartIndex();
     if (!!this.survey) return this.survey.questionStartIndex;
@@ -1287,13 +1337,17 @@ export class PanelModelBase extends SurveyElement<Question>
     (<Base>(<any>element)).unregisterPropertyChangedHandlers(["visible", "isVisible", "startWithNewLine"], this.id);
     this.updateRowsOnElementRemoved(element);
     if (this.isRandomizing) return;
-    if (!element.isPanel) {
-      if (this.survey) this.survey.questionRemoved(<Question>element);
-    } else {
-      if (this.survey) this.survey.panelRemoved(element);
-    }
+    this.onRemoveElementNotifySurvey(element);
     if (!!this.removeElementCallback) this.removeElementCallback(element);
     this.onElementVisibilityChanged(this);
+  }
+  private onRemoveElementNotifySurvey(element: IElement): void {
+    if(!this.survey) return;
+    if (!element.isPanel) {
+      this.survey.questionRemoved(<Question>element);
+    } else {
+      this.survey.panelRemoved(element);
+    }
   }
   private onElementVisibilityChanged(element: any) {
     if (this.isLoadingFromJson || this.isRandomizing) return;
@@ -1923,7 +1977,7 @@ export class PanelModel extends PanelModelBase implements IElement {
   protected createLocTitleProperty(): LocalizableString {
     const locTitleValue = super.createLocTitleProperty();
     locTitleValue.onGetTextCallback = (text: string): string => {
-      if (!text && (this.state !== "default")) {
+      if (!text && (this.state !== "default" || (this.isDesignMode && this.isDefaultV2Theme))) {
         text = this.name;
       }
       return text;
@@ -2055,7 +2109,10 @@ export class PanelModel extends PanelModelBase implements IElement {
     this.survey.cancelPreviewByPage(this);
   }
   public get cssTitle(): string {
-    return this.getCssTitle(this.cssClasses.panel);
+    return new CssClassBuilder()
+      .append(this.getCssTitle(this.cssClasses.panel))
+      .append(this.cssClasses.panel.titleHidden, !this.title && this.isDesignMode)
+      .toString();
   }
   public get showErrorsAbovePanel(): boolean {
     return this.isDefaultV2Theme && !this.showPanelAsPage;
@@ -2134,6 +2191,12 @@ Serializer.addClass(
     "visibleIf:condition",
     "enableIf:condition",
     "requiredIf:condition",
+    {
+      name: "questionTitleWidth",
+      visibleIf: function (obj: any) {
+        return !!obj && obj["availableQuestionTitleWidth"]();
+      }
+    },
     {
       name: "questionTitleLocation",
       default: "default",

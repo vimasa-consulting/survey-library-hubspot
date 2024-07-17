@@ -99,6 +99,7 @@ export var arabicSurveyStrings = {
   emptyMessage: "لا توجد بيانات للعرض",
   noEntriesText: "لا توجد إدخالات حتى الآن.\nانقر فوق الزر أدناه لإضافة إدخال جديد.",
   noEntriesReadonlyText: "لا توجد إدخالات.",
+  tabTitlePlaceholder: "لوحة جديدة",
   more: "أكثر",
   tagboxDoneButtonCaption: "موافق",
   selectToRankEmptyRankedAreaText: "يتم ترتيب جميع الخيارات",
@@ -109,6 +110,7 @@ export var arabicSurveyStrings = {
 
 surveyLocalization.locales["ar"] = arabicSurveyStrings;
 surveyLocalization.localeNames["ar"] = "العربية";
+surveyLocalization.localeDirections["ar"] = "rtl";
 
 // The following strings have been translated by a machine translation service
 // Remove those strings that you have corrected manually
@@ -141,4 +143,4 @@ surveyLocalization.localeNames["ar"] = "العربية";
 // cancel: "Cancel" => "إلغاء الأمر"
 // refuseItemText: "Refuse to answer" => "رفض الإجابة"
 // dontKnowItemText: "Don't know" => "لا أعرف"// savingExceedSize: "Your response exceeds 64KB. Please reduce the size of your file(s) and try again or contact a survey owner." => "ردك يتجاوز 64 كيلوبايت. يرجى تقليل حجم الملف (الملفات) والمحاولة مرة أخرى أو الاتصال بمالك الاستطلاع."
-// signaturePlaceHolderReadOnly: "No signature" => "لا يوجد توقيع"
+// signaturePlaceHolderReadOnly: "No signature" => "لا يوجد توقيع"// tabTitlePlaceholder: "New Panel" => "لوحة جديدة"

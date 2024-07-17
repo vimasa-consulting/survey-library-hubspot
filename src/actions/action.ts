@@ -63,6 +63,7 @@ export interface IAction {
    * [View Demo](https://surveyjs.io/form-library/examples/add-custom-navigation-button/ (linkStyle))
    */
   action?: (context?: any) => void;
+  onFocus?: (isMouse: boolean, event: any) => void;
   /**
    * One or several CSS classes that you want to apply to the outer `<div>` element.
    *
@@ -312,6 +313,9 @@ export abstract class BaseAction extends Base implements IAction {
       !!this.title
     );
   }
+  public get hasSubItems(): boolean {
+    return !!this.items && this.items.length > 0;
+  }
   public getActionBarItemTitleCss(): string {
     return new CssClassBuilder()
       .append(this.cssClasses.itemTitle)
@@ -432,12 +436,14 @@ export class Action extends BaseAction implements IAction, ILocalizableOwner {
   private createLocTitle(): LocalizableString {
     return this.createLocalizableString("title", this, true);
   }
-  public setItems(items: Array<IAction>, onSelectionChanged?: (item: Action, ...params: any[]) => void): void {
+  public setSubItems(options: IListModel): void {
     this.markerIconName = "icon-next_16x16";
     this.component = "sv-list-item-group";
-    this.items = [...items];
+    this.items = [...options.items];
+    const listOptions = Object.assign({}, options);
+    listOptions.searchEnabled = false;
     const popupModel = createPopupModelWithListModel(
-      { items: items, onSelectionChanged: onSelectionChanged, searchEnabled: false },
+      listOptions,
       { horizontalPosition: "right", showPointer: false, canShrink: false }
     );
     popupModel.cssClass = "sv-popup-inner";
@@ -458,6 +464,7 @@ export class Action extends BaseAction implements IAction, ILocalizableOwner {
   }) locTooltipName?: string;
   @property() private _enabled: boolean;
   @property() action: (context?: any, isUserAction?: boolean) => void;
+  @property() onFocus: (isMouse: boolean, event: any) => void;
   @property() _component: string;
   @property() items: any;
   @property({
@@ -496,6 +503,24 @@ export class Action extends BaseAction implements IAction, ILocalizableOwner {
     super.locStrsChanged();
     this.locTooltipChanged();
     this.locStrChangedInPopupModel();
+  }
+  public doAction(args: any): boolean {
+    const evt = !!args.originalEvent ? args.originalEvent : args;
+    this.action(this, evt.isTrusted);
+    evt.preventDefault();
+    evt.stopPropagation();
+    return true;
+  }
+  private isMouseDown: boolean;
+  public doMouseDown() : void {
+    this.isMouseDown = true;
+  }
+  public doFocus(args: any): void {
+    if(!!this.onFocus) {
+      const evt = !!args.originalEvent ? args.originalEvent : args;
+      this.onFocus(this.isMouseDown, evt);
+    }
+    this.isMouseDown = false;
   }
   private locStrChangedInPopupModel(): void {
     if (!this.popupModel || !this.popupModel.contentComponentData || !this.popupModel.contentComponentData.model) return;

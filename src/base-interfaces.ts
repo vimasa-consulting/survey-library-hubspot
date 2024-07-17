@@ -104,6 +104,7 @@ export interface ISurvey extends ITextProcessor, ISurveyErrorOwner {
   isUpdateValueTextOnTyping: boolean;
   autoGrowComment: boolean;
   allowResizeComment: boolean;
+  commentAreaRows: number;
 
   state: string;
   isLazyRendering: boolean;
@@ -148,6 +149,8 @@ export interface ISurvey extends ITextProcessor, ISurveyErrorOwner {
   maxTextLength: number;
   maxOthersLength: number;
   clearValueOnDisableItems: boolean;
+
+  maxTimeToFinishPage: number;
 
   uploadFiles(
     question: IQuestion,
@@ -321,6 +324,7 @@ export interface IParentElement {
 export interface IPanel extends ISurveyElement, IParentElement {
   getChildrenLayoutType(): string;
   getQuestionTitleLocation(): string;
+  getQuestionTitleWidth(): string;
   getQuestionStartIndex(): string;
   getQuestionErrorLocation(): string;
   parent: IPanel;
@@ -329,6 +333,7 @@ export interface IPanel extends ISurveyElement, IParentElement {
   elements: Array<IElement>;
   ensureRowsVisibility(): void;
   validateContainerOnly(): void;
+  onQuestionValueChanged(el: IElement): void;
 }
 export interface IPage extends IPanel, IConditionRunner {
   isStartPage: boolean;

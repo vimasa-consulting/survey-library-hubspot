@@ -533,7 +533,7 @@ export class SurveyModel extends SurveyElementCore
   public onUpdatePageCssClasses: EventBase<SurveyModel, UpdatePageCssClassesEvent> = this.addEvent<SurveyModel, UpdatePageCssClassesEvent>();
 
   /**
-   * An event that is raised before rendering a choice item in Radio Button Group, Checkboxes, and Dropdown questions. Use it to override default CSS classes applied to choice items.
+   * An event that is raised before rendering a choice item in Radio Button Group and Checkboxes questions. Use it to override default CSS classes applied to choice items.
    *
    * For information on event handler parameters, refer to descriptions within the interface.
    *
@@ -1730,6 +1730,8 @@ export class SurveyModel extends SurveyElementCore
    * - `"onValueChanged"` - Triggers validation each time a question value is changed.
    * - `"onComplete"` - Triggers validation when a user clicks the Complete button. If previous pages contain errors, the survey switches to the page with the first error.
    *
+   * > The `"onValueChanged"` doesn't work with date input fields because of the way browsers process date values. In most browsers, the value is considered changed as soon as a user starts entering the date in a text input field. This means that a user may only enter the day without having the chance to enter the month and year before validation is triggered. For this reason, date input fields are validated before the survey is switched to the next page or completed.
+   *
    * Refer to the following help topic for more information: [Data Validation](https://surveyjs.io/form-library/documentation/data-validation).
    * @see validationEnabled
    * @see validationAllowSwitchPages
@@ -1749,6 +1751,7 @@ export class SurveyModel extends SurveyElementCore
    *
    * You can override this property for individual Long Text questions: [`autoGrow`](https://surveyjs.io/form-library/documentation/api-reference/comment-field-model#autoGrow).
    * @see allowResizeComment
+   * @see commentAreaRows
    */
   public get autoGrowComment(): boolean {
     return this.getPropertyValue("autoGrowComment");
@@ -1763,12 +1766,29 @@ export class SurveyModel extends SurveyElementCore
    *
    * You can override this property for individual Long Text questions: [`allowResize`](https://surveyjs.io/form-library/documentation/api-reference/comment-field-model#allowResize).
    * @see autoGrowComment
+   * @see commentAreaRows
    */
   public get allowResizeComment(): boolean {
     return this.getPropertyValue("allowResizeComment");
   }
   public set allowResizeComment(val: boolean) {
     this.setPropertyValue("allowResizeComment", val);
+  }
+
+  /**
+   * Specifies the visible height of comment areas, measured in lines. Applies to the questions with the [`showCommentArea`](https://surveyjs.io/form-library/documentation/api-reference/question#showCommentArea) or [`showOtherItem`](https://surveyjs.io/form-library/documentation/api-reference/question#showOtherItem) property enabled.
+   *
+   * Default value: 2
+   *
+   * The value of this property is passed on to the `rows` attribute of the underlying `<textarea>` element.
+   * @see autoGrowComment
+   * @see allowResizeComment
+   */
+  public get commentAreaRows(): number {
+    return this.getPropertyValue("commentAreaRows");
+  }
+  public set commentAreaRows(val: number) {
+    this.setPropertyValue("commentAreaRows", val);
   }
   /**
    * Specifies when to update the question value in questions with a text input field.
@@ -1886,6 +1906,9 @@ export class SurveyModel extends SurveyElementCore
     this.localeChanged();
     this.onLocaleChangedEvent.fire(this, this.locale);
   }
+  public get localeDir(): string {
+    return surveyLocalization.localeDirections[this.locale];
+  }
   /**
    * Returns an array of locales whose translations are used in the survey.
    *
@@ -1950,13 +1973,14 @@ export class SurveyModel extends SurveyElementCore
     return this.getRendererContextForString(this, locStr);
   }
   public getRendererForString(element: Question | PanelModel | PageModel | SurveyModel, name: string): string {
-    const renderAs = this.getBuiltInRendererForString(element, name);
+    let renderAs = this.getBuiltInRendererForString(element, name);
+    renderAs = this.elementWrapperComponentNameCore(renderAs, element, "string", name);
     const options: TextRenderAsEvent = { element: element, name: name, renderAs: renderAs };
     this.onTextRenderAs.fire(this, options);
     return options.renderAs;
   }
-  public getRendererContextForString(element: Base, locStr: LocalizableString) {
-    return locStr;
+  public getRendererContextForString(element: Base, locStr: LocalizableString): any {
+    return this.elementWrapperDataCore(locStr, element, "string");
   }
   getExpressionDisplayValue(
     question: Question,
@@ -2918,6 +2942,25 @@ export class SurveyModel extends SurveyElementCore
     this.runConditions();
     this.updateAllQuestionsValue(clearData);
   }
+  public get isSurvey(): boolean { return true; }
+  /**
+   * Returns an object with survey results.
+   *
+   * If you want to get a survey results object that mirrors the survey structure, call the `getData()` method with an object that has the `includePages` and `includePanels` properties enabled. Without this object, the `getData()` method returns the [`data`](https://surveyjs.io/form-library/documentation/api-reference/survey-data-model#data) property value.
+   *
+   * ```js
+   * import { Model } from "survey-core";
+   *
+   * const surveyJson = { ... };
+   * const survey = new Model(surveyJson);
+   * survey.getData({ includePages: true, includePanels: true });
+   * ```
+   */
+  public getData(options?: { includePages?: boolean, includePanels?: boolean }): any {
+    const opt = options || { includePages: false, includePanels: false };
+    if(!opt.includePages && !opt.includePanels) return this.data;
+    return this.getStructuredData(!!opt.includePages, !opt.includePanels ? (opt.includePages ? 1 : 0) : -1);
+  }
   public getStructuredData(includePages: boolean = true, level: number = -1): any {
     if (level === 0) return this.data;
     const data: any = {};
@@ -3317,7 +3360,9 @@ export class SurveyModel extends SurveyElementCore
   }
   private updateActivePage(): void {
     const newPage = this.isShowStartingPage ? this.startedPage : this.currentPage;
-    this.setPropertyValue("activePage", newPage);
+    if (newPage !== this.activePage) {
+      this.setPropertyValue("activePage", newPage);
+    }
   }
   private onStateAndCurrentPageChanged(): void {
     this.updateActivePage();
@@ -3917,7 +3962,7 @@ export class SurveyModel extends SurveyElementCore
       }
     }
     if (!!rec.firstErrorQuestion && (focusOnFirstError || changeCurrentPage)) {
-      if(focusOnFirstError) {
+      if (focusOnFirstError) {
         rec.firstErrorQuestion.focus(true);
       } else {
         this.currentPage = rec.firstErrorQuestion.page;
@@ -4402,7 +4447,7 @@ export class SurveyModel extends SurveyElementCore
   private calcIsShowPrevButton(): boolean {
     if (this.isFirstPage || !this.showPrevButton || this.state !== "running") return false;
     var page = this.visiblePages[this.currentPageNo - 1];
-    return this.getPageMaxTimeToFinish(page) <= 0;
+    return page && page.getMaxTimeToFinish() <= 0;
   }
   private calcIsShowNextButton(): boolean {
     return this.state === "running" && !this.isLastPage && !this.canBeCompletedByTrigger;
@@ -4798,6 +4843,7 @@ export class SurveyModel extends SurveyElementCore
   public getRootCss(): string {
     return new CssClassBuilder()
       .append(this.css.root)
+      .append(this.css.rootProgress + "--" + this.progressBarType)
       .append(this.css.rootMobile, this.isMobile)
       .append(this.css.rootAnimationDisabled, !settings.animationEnabled)
       .append(this.css.rootReadOnly, this.mode === "display" && !this.isDesignMode)
@@ -6059,11 +6105,11 @@ export class SurveyModel extends SurveyElementCore
           isCompleted: string,
           response: any
         ) {
-          self.isLoading = false;
           if (success) {
             self.isCompletedBefore = isCompleted == "completed";
             self.loadSurveyFromServiceJson(json);
           }
+          self.isLoading = false;
         }
       );
     } else {
@@ -6072,10 +6118,10 @@ export class SurveyModel extends SurveyElementCore
         result: string,
         response: any
       ) {
-        self.isLoading = false;
         if (success) {
           self.loadSurveyFromServiceJson(result);
         }
+        self.isLoading = false;
       });
     }
   }
@@ -6434,7 +6480,7 @@ export class SurveyModel extends SurveyElementCore
     name = name.toLowerCase();
     this.variablesHash[name] = newValue;
     this.notifyElementsOnAnyValueOrVariableChanged(name);
-    if(!Helpers.isTwoValueEquals(oldValue, newValue)) {
+    if (!Helpers.isTwoValueEquals(oldValue, newValue)) {
       this.checkTriggersAndRunConditions(name, newValue, oldValue);
       this.onVariableChanged.fire(this, { name: name, value: newValue });
     }
@@ -6666,7 +6712,7 @@ export class SurveyModel extends SurveyElementCore
         value: newValue,
       });
       question.comment = newValue;
-      if(question.comment != newValue) {
+      if (question.comment != newValue) {
         question.comment = newValue;
       }
     }
@@ -7169,7 +7215,7 @@ export class SurveyModel extends SurveyElementCore
     if (!page) return { spent: 0, limit: 0 };
     let pageSpent = page.timeSpent;
     let surveySpent = this.timeSpent;
-    let pageLimitSec = this.getPageMaxTimeToFinish(page);
+    let pageLimitSec = page.getMaxTimeToFinish();
     let surveyLimit = this.maxTimeToFinish;
     if (this.showTimerPanelMode == "page") {
       return { spent: pageSpent, limit: pageLimitSec };
@@ -7196,7 +7242,7 @@ export class SurveyModel extends SurveyElementCore
     if (!page) return "";
     var pageSpent = this.getDisplayTime(page.timeSpent);
     var surveySpent = this.getDisplayTime(this.timeSpent);
-    var pageLimitSec = this.getPageMaxTimeToFinish(page);
+    var pageLimitSec = page.getMaxTimeToFinish();
     var pageLimit = this.getDisplayTime(pageLimitSec);
     var surveyLimit = this.getDisplayTime(this.maxTimeToFinish);
     if (this.showTimerPanelMode == "page")
@@ -7229,7 +7275,7 @@ export class SurveyModel extends SurveyElementCore
     pageSpent: string,
     pageLimit: string
   ): string {
-    return this.getPageMaxTimeToFinish(page) > 0
+    return !!page && page.getMaxTimeToFinish() > 0
       ? this.getLocalizationFormatString("timerLimitPage", pageSpent, pageLimit)
       : this.getLocalizationFormatString("timerSpentPage", pageSpent, pageLimit);
   }
@@ -7339,19 +7385,14 @@ export class SurveyModel extends SurveyElementCore
   public set maxTimeToFinishPage(val: number) {
     this.setPropertyValue("maxTimeToFinishPage", val);
   }
-  private getPageMaxTimeToFinish(page: PageModel) {
-    if (!page || page.maxTimeToFinish < 0) return 0;
-    return page.maxTimeToFinish > 0
-      ? page.maxTimeToFinish
-      : this.maxTimeToFinishPage;
-  }
   private doTimer(page: PageModel): void {
     this.onTimer.fire(this, {});
-    if (this.maxTimeToFinish > 0 && this.maxTimeToFinish == this.timeSpent) {
+    if (this.maxTimeToFinish > 0 && this.maxTimeToFinish <= this.timeSpent) {
+      this.timeSpent = this.maxTimeToFinish;
       this.completeLastPage();
     }
     if (page) {
-      var pageLimit = this.getPageMaxTimeToFinish(page);
+      var pageLimit = page.getMaxTimeToFinish();
       if (pageLimit > 0 && pageLimit == page.timeSpent) {
         if (this.isLastPage) {
           this.completeLastPage();
@@ -7478,13 +7519,13 @@ export class SurveyModel extends SurveyElementCore
     }
   }
   private elementWrapperComponentNameCore(componentName: string, element: any, wrapperName: string, reason?: string, item?: ItemValue): string {
-    if(this.onElementWrapperComponentName.isEmpty) return componentName;
+    if (this.onElementWrapperComponentName.isEmpty) return componentName;
     const options = { componentName: componentName, element: element, wrapperName: wrapperName, reason: reason, item: item };
     this.onElementWrapperComponentName.fire(this, options);
     return options.componentName;
   }
   private elementWrapperDataCore(data: any, element: any, wrapperName: string, reason?: string, item?: ItemValue): any {
-    if(this.onElementWrapperComponentData.isEmpty) return data;
+    if (this.onElementWrapperComponentData.isEmpty) return data;
     const options = { data: data, element: element, wrapperName: wrapperName, reason: reason, item: item };
     this.onElementWrapperComponentData.fire(this, options);
     return options.data;
@@ -7665,10 +7706,7 @@ export class SurveyModel extends SurveyElementCore
 
     Object.keys(theme).forEach((key: keyof ITheme) => {
       if (key === "header") {
-        this.removeLayoutElement("advanced-header");
-        const advHeader = new Cover();
-        advHeader.fromTheme(theme);
-        this.insertAdvancedHeader(advHeader);
+        return;
       }
       if (key === "isPanelless") {
         this.isCompact = theme[key];
@@ -7676,6 +7714,12 @@ export class SurveyModel extends SurveyElementCore
         (this as any)[key] = theme[key];
       }
     });
+    if (this.headerView === "advanced" || "header" in theme) {
+      this.removeLayoutElement("advanced-header");
+      const advHeader = new Cover();
+      advHeader.fromTheme(theme);
+      this.insertAdvancedHeader(advHeader);
+    }
     this.themeChanged(theme);
   }
   public themeChanged(theme: ITheme): void {
@@ -7717,7 +7761,25 @@ export class SurveyModel extends SurveyElementCore
   disposeCallback: () => void;
 
   private onScrollCallback: () => void;
+  // private _lastScrollTop = 0;
+  public _isElementShouldBeSticky(selector: string): boolean {
+    if (!selector) return false;
+    const topStickyContainer = this.rootElement.querySelector(selector);
+    if (!!topStickyContainer) {
+      // const scrollDirection = this.rootElement.scrollTop > this._lastScrollTop ? "down" : "up";
+      // this._lastScrollTop = this.rootElement.scrollTop;
+      return this.rootElement.scrollTop > 0 && topStickyContainer.getBoundingClientRect().y <= this.rootElement.getBoundingClientRect().y;
+    }
+    return false;
+  }
   public onScroll(): void {
+    if (!!this.rootElement) {
+      if (this._isElementShouldBeSticky(".sv-components-container-center")) {
+        this.rootElement.classList && this.rootElement.classList.add("sv-root--sticky-top");
+      } else {
+        this.rootElement.classList && this.rootElement.classList.remove("sv-root--sticky-top");
+      }
+    }
     if (this.onScrollCallback) {
       this.onScrollCallback();
     }
@@ -7946,6 +8008,7 @@ Serializer.addClass("survey", [
   },
   { name: "autoGrowComment:boolean", default: false },
   { name: "allowResizeComment:boolean", default: true },
+  { name: "commentAreaRows:number", minValue: 1 },
   {
     name: "startSurveyText",
     serializationProperty: "locStartSurveyText",

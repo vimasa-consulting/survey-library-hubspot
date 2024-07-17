@@ -60,8 +60,6 @@ body {
 }
 
 .sd-root-modern {
-  @include scrollRules;
-
   -webkit-font-smoothing: antialiased;
   --sd-mobile-width: 600px;
   --sd-timer-size: calc(18 * #{$base-unit});
@@ -69,6 +67,8 @@ body {
   font-family: $font-family;
   background-color: $background-dim;
   position: relative;
+
+  @include scrollRules;
 
   form {
     // z-index: 1;
@@ -116,4 +116,26 @@ body {
 
 .sv-popup .sv-popup__scrolling-content {
   @include scrollRules;
+}
+
+@mixin stickyHeader {
+  position: sticky;
+  top: 0;
+}
+
+.sv-components-container-center {
+  @include stickyHeader;
+}
+
+.sv-root--sticky-top {
+  .sv-components-container-center {
+    z-index: 15;
+  }
+}
+
+.sv-root--sticky-top.sd-progress--pages {
+  .sv-components-container-center {
+    background-color: $background-dim;
+    box-shadow: $shadow-medium, $shadow-small;
+  }
 }

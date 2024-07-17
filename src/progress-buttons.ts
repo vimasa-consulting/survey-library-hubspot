@@ -83,7 +83,8 @@ export class ProgressButtons extends Base {
     if (!listContainerElement) return;
     const listContainerElements = element.querySelectorAll(".sd-progress-buttons__connector");
     const circleWidth = this.showItemNumbers ? 17 : 5;
-    const connectorWidth = listContainerElement.clientWidth / (listContainerElement.children.length - 1) - circleWidth;
+    const sideCorrection = this.survey.isMobile ? 0 : listContainerElement.children[0].clientWidth;
+    const connectorWidth = (listContainerElement.clientWidth - sideCorrection) / (listContainerElement.children.length - 1) - circleWidth;
     for (let i = 0; i < listContainerElements.length; i++) {
       (listContainerElements[i] as HTMLDivElement).style.width = connectorWidth + "px";
     }
@@ -96,7 +97,7 @@ export class ProgressButtons extends Base {
   }
   public get progressWidth(): string {
     if (this.isFitToSurveyWidth) {
-      return this.survey.width;
+      return this.survey.renderedWidth;
     }
     return "";
   }

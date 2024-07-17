@@ -810,6 +810,9 @@ export class QuestionMultipleTextModel extends Question
   getQuestionTitleLocation(): string {
     return "left";
   }
+  getQuestionTitleWidth(): string {
+    return undefined;
+  }
   getQuestionStartIndex(): string {
     return this.getStartIndex();
   }
@@ -827,6 +830,9 @@ export class QuestionMultipleTextModel extends Question
     // do nothing
   }
   validateContainerOnly(): void {
+    // do nothing
+  }
+  onQuestionValueChanged(el: IElement): void {
     // do nothing
   }
   public getItemLabelCss(item: MultipleTextItemModel): string {

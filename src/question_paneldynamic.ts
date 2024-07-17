@@ -284,6 +284,7 @@ export class QuestionPanelDynamicModel extends Question
     this.createLocalizableString("panelNextText", this, false, "pageNextText");
     this.createLocalizableString("noEntriesText", this, false, "noEntriesText");
     this.createLocalizableString("templateTabTitle", this, true, "panelDynamicTabTextFormat");
+    this.createLocalizableString("tabTitlePlaceholder", this, true, "tabTitlePlaceholder");
     this.registerPropertyChangedHandlers(["panelsState"], () => {
       this.setPanelsState();
     });
@@ -415,6 +416,7 @@ export class QuestionPanelDynamicModel extends Question
    *
    * [View Demo](https://surveyjs.io/form-library/examples/tabbed-interface-for-duplicate-group-option/ (linkStyle))
    * @see templateTitle
+   * @see tabTitlePlaceholder
    * @see renderMode
    */
   public get templateTabTitle(): string {
@@ -425,6 +427,20 @@ export class QuestionPanelDynamicModel extends Question
   }
   get locTemplateTabTitle(): LocalizableString {
     return this.getLocalizableString("templateTabTitle");
+  }
+  /**
+   * A placeholder for tab titles that applies when the [`templateTabTitle`](https://surveyjs.io/form-library/documentation/api-reference/dynamic-panel-model#templateTabTitle) expression doesn't produce a meaningful value.
+   *
+   * Default value: `"New Panel"` (taken from a [localization dictionary](https://github.com/surveyjs/survey-library/tree/master/src/localization))
+   */
+  public get tabTitlePlaceholder(): string {
+    return this.locTabTitlePlaceholder.text;
+  }
+  public set tabTitlePlaceholder(newValue: string) {
+    this.locTabTitlePlaceholder.text = newValue;
+  }
+  get locTabTitlePlaceholder(): LocalizableString {
+    return this.getLocalizableString("tabTitlePlaceholder");
   }
   /**
    * A template for panel descriptions.
@@ -1525,9 +1541,10 @@ export class QuestionPanelDynamicModel extends Question
     }
     return -1;
   }
-  private getPanelIndexById(id: string): number {
-    for (var i = 0; i < this.panelsCore.length; i++) {
-      if (this.panelsCore[i].id === id) return i;
+  private getPanelVisibleIndexById(id: string): number {
+    const visPanels = this.visiblePanelsCore;
+    for (var i = 0; i < visPanels.length; i++) {
+      if (visPanels[i].id === id) return i;
     }
     return -1;
   }
@@ -2394,6 +2411,9 @@ export class QuestionPanelDynamicModel extends Question
 
     const locTitle = new LocalizableString(panel, true);
     locTitle.onGetTextCallback = (str: string): string => {
+      if(!str) {
+        str = this.locTabTitlePlaceholder.renderedHtml;
+      }
       if(!this.survey) return str;
       const options = {
         title: str,
@@ -2404,14 +2424,14 @@ export class QuestionPanelDynamicModel extends Question
       return options.title;
     };
     locTitle.sharedData = this.locTemplateTabTitle;
-    const isActive = this.getPanelIndexById(panel.id) === this.currentIndex;
+    const isActive = this.getPanelVisibleIndexById(panel.id) === this.currentIndex;
     const newItem = new Action({
       id: panel.id,
       pressed: isActive,
       locTitle: locTitle,
       disableHide: isActive,
       action: () => {
-        this.currentIndex = this.getPanelIndexById(newItem.id);
+        this.currentIndex = this.getPanelVisibleIndexById(newItem.id);
       }
     });
     return newItem;
@@ -2501,6 +2521,8 @@ Serializer.addClass(
     },
     { name: "templateTitle:text", serializationProperty: "locTemplateTitle" },
     { name: "templateTabTitle", serializationProperty: "locTemplateTabTitle",
+      visibleIf: (obj: any) => { return obj.renderMode === "tab"; } },
+    { name: "tabTitlePlaceholder", serializationProperty: "locTabTitlePlaceholder",
       visibleIf: (obj: any) => { return obj.renderMode === "tab"; } },
     {
       name: "templateDescription:text",

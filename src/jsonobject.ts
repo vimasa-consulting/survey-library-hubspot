@@ -410,7 +410,7 @@ export class JsonObjectProperty implements IObject, IJsonPropertyInfo {
     }
     if(this.isLocalizable) return value === null || value === undefined;
     return (
-      (value === false && (this.type == "boolean" || this.type == "switch")) ||
+      (value === false && (this.type == "boolean" || this.type == "switch") && !this.defaultValueFunc) ||
       value === "" || Helpers.isValueEmpty(value)
     );
   }
@@ -1714,7 +1714,7 @@ export class JsonObject {
     options?: ISaveToJSONOptions | boolean
   ): any {
     if (!obj || !obj.getType) return obj;
-    if (typeof obj.getData === "function") return obj.getData();
+    if (!obj.isSurvey && typeof obj.getData === "function") return obj.getData();
     var result = {};
     if (property != null && !property.className) {
       (<any>result)[JsonObject.typePropertyName] = property.getObjType(

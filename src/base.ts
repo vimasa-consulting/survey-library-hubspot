@@ -500,6 +500,7 @@ export class Base {
     const prop = this.getPropertyByName(name);
     if(!prop || prop.isCustom && this.isCreating) return undefined;
     const dValue = prop.defaultValue;
+    if (!!prop.defaultValueFunc) return dValue;
     if (!this.isPropertyEmpty(dValue) && !Array.isArray(dValue)) return dValue;
     const locStr = this.localizableStrings ? this.localizableStrings[name] : undefined;
     if(locStr && locStr.localizationName) return this.getLocalizationString(locStr.localizationName);
@@ -1172,7 +1173,7 @@ export class Base {
     return this.supportOnElementRenderedEvent && this.onElementRenderedEventEnabled ? this._onElementRerendered : undefined;
   }
   public afterRerender(): void {
-    this.onElementRerendered.fire(this, undefined);
+    this.onElementRerendered?.fire(this, undefined);
   }
 }
 
