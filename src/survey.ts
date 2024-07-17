@@ -848,34 +848,50 @@ export class SurveyModel extends SurveyElementCore
   public onElementWrapperComponentData: EventBase<SurveyModel, ElementWrapperComponentDataEvent> = this.addEvent<SurveyModel, ElementWrapperComponentDataEvent>();
   //#endregion
 
-  static customInit(options: {apiBaseURL?: string, ko: any }): void {
+  // note: apiBaseURL is global configuration, hence
+  // changing value per insert call on same page may have unpredictable outcome
+  static insert(surveyId: string, options: {apiBaseURL?: string, loadingText: string, ko: any }): void {
+    // TODO: change source to avoid global config driven approach
     if (options.apiBaseURL) {
       settings.web.surveyServiceUrl = options.apiBaseURL;
     } else {
       settings.web.surveyServiceUrl = "https://staging.d19v2i26293l2w.amplifyapp.com/api";
     }
-    // fetch survey elements, create survey models and prepare data for binding later
-    const surveys = DomWindowHelper.getWindow().document.getElementsByTagName("survey");
-    const surveyTuples: [Element, SurveyModel][] = []; // [surveyElement, surveyModel]
-    for (let index = 0; index < surveys.length; index++) {
-      const survey = surveys[index];
-      const surveyId = survey.getAttribute("data-survey-id");
-      const surveyModel = new SurveyModel({ "surveyId": surveyId });
-      surveyModel.onLoadedSurveyFromService.add(() => {
-        if (surveyModel.jsonObj.themeJSON) {
-          surveyModel.applyTheme(surveyModel.jsonObj.themeJSON);
-        }
-      });
-      surveyTuples.push([survey, surveyModel]);
-    }
-    DomWindowHelper.getWindow().document.addEventListener("DOMContentLoaded", function () {
-      for (let index = 0; index < surveyTuples.length; index++) {
-        const surveyTuple = surveyTuples[index];
-        options.ko.applyBindings({
-          model: surveyTuple[1]
-        }, surveyTuple[0]);
+    const surveyModel = new SurveyModel({ "surveyId": surveyId });
+    surveyModel.onLoadedSurveyFromService.add(() => {
+      if (surveyModel.jsonObj.themeJSON) {
+        surveyModel.applyTheme(surveyModel.jsonObj.themeJSON);
       }
     });
+    const surveyTag = DomWindowHelper.getWindow().document.createElement("survey");
+    surveyTag.textContent = options.loadingText === undefined ? "Loading" : options.loadingText;
+    surveyTag.setAttribute("params", "survey: model");
+
+    let targetScriptTag = DomWindowHelper.getWindow().document.currentScript;
+    if (!targetScriptTag) {
+      // Fallback: Select all scripts and find the last one that matches
+      const scriptTags = Array.from(DomWindowHelper.getWindow().document.getElementsByTagName("script")).filter((scriptTag) => {
+        if (scriptTag.src || !scriptTag.innerHTML) {
+          // TODO: add content match?
+          return false;
+        }
+        return true;
+      });
+      targetScriptTag = scriptTags[scriptTags.length - 1];
+    }
+
+    if (targetScriptTag) {
+      const surveyElement = targetScriptTag.parentNode.insertBefore(surveyTag, targetScriptTag.nextSibling);
+      DomWindowHelper.getWindow().document.addEventListener("DOMContentLoaded", function () {
+        options.ko.applyBindings({
+          model: surveyModel
+        }, surveyElement);
+      });
+    } else {
+      // TODO: Handle the case where no script tag is found
+      // eslint-disable-next-line no-console
+      console.error("No script tag found to insert sibling element");
+    }
   }
 
   constructor(jsonObj: any = null, renderedElement: any = null) {
