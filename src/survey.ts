@@ -882,11 +882,17 @@ export class SurveyModel extends SurveyElementCore
 
     if (targetScriptTag) {
       const surveyElement = targetScriptTag.parentNode.insertBefore(surveyTag, targetScriptTag.nextSibling);
-      DomWindowHelper.getWindow().document.addEventListener("DOMContentLoaded", function () {
+      if (DomWindowHelper.getWindow().document.readyState !== "loading") {
         options.ko.applyBindings({
           model: surveyModel
         }, surveyElement);
-      });
+      } else {
+        DomWindowHelper.getWindow().document.addEventListener("DOMContentLoaded", function () {
+          options.ko.applyBindings({
+            model: surveyModel
+          }, surveyElement);
+        });
+      }
     } else {
       // TODO: Handle the case where no script tag is found
       // eslint-disable-next-line no-console
