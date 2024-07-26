@@ -81,6 +81,12 @@ import { ProgressButtons } from "./progress-buttons";
 import { TOCModel } from "./surveyToc";
 import { DomDocumentHelper, DomWindowHelper } from "./global_variables_utils";
 
+declare global {
+  interface Window {
+    ko?: any;
+  }
+}
+
 /**
  * The `SurveyModel` object contains properties and methods that allow you to control the survey and access its elements.
  *
@@ -850,9 +856,9 @@ export class SurveyModel extends SurveyElementCore
 
   // note: apiBaseURL is global configuration, hence
   // changing value per insert call on same page may have unpredictable outcome
-  static insert(surveyId: string, options: {apiBaseURL?: string, loadingText: string, ko: any }): void {
+  static insert(surveyId: string, options?: {apiBaseURL?: string, loadingText?: string}): SurveyModel | null {
     // TODO: change source to avoid global config driven approach
-    if (options.apiBaseURL) {
+    if (options?.apiBaseURL) {
       settings.web.surveyServiceUrl = options.apiBaseURL;
     } else {
       settings.web.surveyServiceUrl = "https://staging.d19v2i26293l2w.amplifyapp.com/api";
@@ -864,7 +870,7 @@ export class SurveyModel extends SurveyElementCore
       }
     });
     const surveyTag = DomWindowHelper.getWindow().document.createElement("survey");
-    surveyTag.textContent = options.loadingText === undefined ? "Loading" : options.loadingText;
+    surveyTag.textContent = options?.loadingText === undefined ? "Loading" : options.loadingText;
     surveyTag.setAttribute("params", "survey: model");
 
     let targetScriptTag = DomWindowHelper.getWindow().document.currentScript;
@@ -883,20 +889,22 @@ export class SurveyModel extends SurveyElementCore
     if (targetScriptTag) {
       const surveyElement = targetScriptTag.parentNode.insertBefore(surveyTag, targetScriptTag.nextSibling);
       if (DomWindowHelper.getWindow().document.readyState !== "loading") {
-        options.ko.applyBindings({
+        DomWindowHelper.getWindow().ko.applyBindings({
           model: surveyModel
         }, surveyElement);
       } else {
         DomWindowHelper.getWindow().document.addEventListener("DOMContentLoaded", function () {
-          options.ko.applyBindings({
+          DomWindowHelper.getWindow().ko.applyBindings({
             model: surveyModel
           }, surveyElement);
         });
       }
+      return surveyModel;
     } else {
       // TODO: Handle the case where no script tag is found
       // eslint-disable-next-line no-console
       console.error("No script tag found to insert sibling element");
+      return null;
     }
   }
 
