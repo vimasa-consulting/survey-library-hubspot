@@ -72,17 +72,6 @@
   .sd-row--multiple {
     row-gap: var(--sd-base-vertical-padding);
 
-    & > div {
-      --animation-padding-left: var(--sd-base-padding);
-      padding-left: var(--sd-base-padding);
-    }
-  }
-}
-
-.sd-row--multiple.sd-row--compact {
-  & > div {
-    --animation-padding-left: var(--sd-base-padding);
-    padding-left: var(--sd-base-padding);
   }
 }
 

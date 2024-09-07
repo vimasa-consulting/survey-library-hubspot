@@ -98,7 +98,7 @@
   }
 
   & > .sd-question__header--location-top {
-    padding-bottom: calc(0.5 * var(--sd-base-vertical-padding));
+    padding-bottom: 4px;
 
     &:after {
       display: none;

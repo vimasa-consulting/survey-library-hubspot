@@ -77,7 +77,7 @@
   width: initial;
 }
 .sd-panel__content {
-  padding-top: var(--sd-base-padding);
+  padding-top: 0;
 }
 
 .sd-panel.sd-element--nested {
@@ -89,4 +89,5 @@
 
 .sd-panel__content {
   --animation-padding-top: var(--sd-base-padding);
+  padding-top: 0px;
 }
