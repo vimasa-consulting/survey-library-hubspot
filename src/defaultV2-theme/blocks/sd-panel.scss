@@ -77,16 +77,16 @@
   width: initial;
 }
 .sd-panel__content {
-  padding-top: var(--sd-base-padding);
+  padding-top: 0px;
 }
 
 .sd-panel.sd-element--nested {
   & > .sd-panel__content {
     padding-bottom: var(--sd-base-padding);
-    --animation-padding-top: var(--sd-base-padding);
+    padding-top: 0px;
   }
 }
 
 .sd-panel__content {
-  --animation-padding-top: var(--sd-base-padding);
+  --animation-padding-top: 0px;
 }
