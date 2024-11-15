@@ -121,6 +121,7 @@ $font-editorfont-placeholdercolor: var(
 );
 $font-default-editorfont-size: var(--sjs-font-editorfont-size, $font-size);
 $base-unit: var(--sjs-base-unit, var(--base-unit, 8px));
+$form-padding-unit: var(--sjs-base-form-padding);
 
 //call  @include useEditorFontSize before using this variable;
 $font-editorfont-size: var(--sjs-internal-font-editorfont-size);
