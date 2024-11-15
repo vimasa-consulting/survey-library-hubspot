@@ -2,6 +2,7 @@
   --sd-base-padding: calc(5 * #{$base-unit});
   --sd-base-vertical-padding: calc(4 * #{$base-unit});
   --sd-page-vertical-padding: calc(3 * #{$base-unit});
+  --sd-form-padding: calc(1 * #{$base-unit}); 
 }
 
 .sd-root-modern.sd-root-modern--mobile {
@@ -9,6 +10,7 @@
   --sd-base-vertical-padding: calc(2 * #{$base-unit});
   --sd-page-vertical-padding: calc(2 * #{$base-unit});
   --sjs-mobile-font-editorfont-size: Max(16px, #{$font-default-editorfont-size});
+  --sd-form-padding: calc(1 * #{$base-unit}); 
 }
 
 .sd-root-modern {

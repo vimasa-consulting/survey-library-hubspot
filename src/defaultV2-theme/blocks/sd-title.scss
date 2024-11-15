@@ -7,10 +7,14 @@
   white-space: normal;
 }
 
+.sd-container-modern {
+  padding: var(--sd-form-padding)
+}
+
 .sd-title.sd-container-modern__title {
   display: flex;
   align-items: center;
-  padding: var(--sd-page-vertical-padding) var(--sd-page-vertical-padding);
+  padding: 0px;
   overflow: auto;
   font-family: $font-family;
   gap: calcSize(4);
