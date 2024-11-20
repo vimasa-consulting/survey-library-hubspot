@@ -85,9 +85,10 @@ body {
 
 .sd-root-modern.sd-root-modern--full-container {
   width: 100%;
-  height: 100%;
+  height: unset;
   overflow: auto;
   position: relative;
+  border-radius: var(--sd-form-border-radius);
 }
 
 .sd-root-modern--mobile {
