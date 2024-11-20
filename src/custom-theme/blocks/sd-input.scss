@@ -6,12 +6,12 @@
   position: static;
   width: 100%;
   box-sizing: border-box;
-  padding: calcSize(1.5) calcSize(2);
+  padding: $input-padding;
   line-height: multiply(1.5, $font-editorfont-size);
   font-family: $font-editorfont-family;
   font-weight: $font-editorfont-weight;
-  color: $font-editorfont-color;
-  font-size: $font-editorfont-size;
+  color: $input-color;
+  font-size: $input-font-size;
   background-color: $editor-background;
   border: none;
   border-radius: $editor-corner-radius;

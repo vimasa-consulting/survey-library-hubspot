@@ -65,7 +65,7 @@
 }
 
 .sd-question__header--location-top {
-  padding-bottom: 4px;
+  padding-bottom: var(--sd-label-bottom-padding);
 }
 
 .sd-question__header--location--bottom {

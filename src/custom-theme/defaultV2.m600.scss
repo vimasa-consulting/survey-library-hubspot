@@ -4,6 +4,8 @@
   --sd-page-vertical-padding: calc(3 * #{$base-unit});
   --sd-form-padding: calc(1 * #{$form-padding-unit});
   --sd-form-border-radius: calc(1 * #{$form-border-radius}); 
+  --sd-label-bottom-padding: calc(1 * #{$label-bottom-padding}); 
+  --sd-input-color: var($input-color)
 }
 
 .sd-root-modern.sd-root-modern--mobile {
