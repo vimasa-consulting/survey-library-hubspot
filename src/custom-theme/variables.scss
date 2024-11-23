@@ -126,7 +126,7 @@ $form-border-radius: var(--sjs-base-form-border-radius);
 $label-bottom-padding: var(--sjs-base-label-bottom-padding); 
 $input-color: var(--sjs-input-color);
 $input-font-size: var(--sjs-input-font-size);
-$input-padding: var(--sjs-input-padding);
+$input-padding: var(--sjs-base-input-padding);
 
 //call  @include useEditorFontSize before using this variable;
 $font-editorfont-size: var(--sjs-internal-font-editorfont-size);

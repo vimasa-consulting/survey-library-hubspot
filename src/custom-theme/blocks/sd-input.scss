@@ -1,3 +1,4 @@
+@import "./variables.scss";
 .sd-input {
   @include useEditorFontSize;
   -webkit-appearance: none;
@@ -7,7 +8,7 @@
   width: 100%;
   box-sizing: border-box;
   padding: $input-padding;
-  line-height: multiply(1.5, $font-editorfont-size);
+  // line-height: multiply(1.5, $font-editorfont-size);
   font-family: $font-editorfont-family;
   font-weight: $font-editorfont-weight;
   color: $input-color;
