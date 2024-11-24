@@ -158,9 +158,9 @@ textarea {
 .sd-input[type="color"],
 .sd-input[type="range"] {
   @include useEditorFontSize;
-  box-sizing: content-box;
-  width: calc(100% - 4 * #{$base-unit});
-  height: multiply(1.5, $font-editorfont-size);
+  box-sizing: border-box;
+  width: 100%;
+  height: 50px;
 
   &.sd-text__character-counter:focus-within {
     width: calc(100% - 10 * #{$base-unit});
