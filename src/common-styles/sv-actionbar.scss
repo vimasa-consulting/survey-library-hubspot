@@ -192,10 +192,17 @@ button.sv-action-bar-item {
   }
 }
 
+.sv-action {
+  width: 100%;
+  display: flex;
+  justify-content: var(--sjs-button-wrapper-justify-content);
+}
+
 .sv-action__content {
   display: flex;
   flex-direction: row;
   align-items: center;
+  width: var(--sjs-button-container-width);
 
   &>* {
     flex: 0 0 auto;

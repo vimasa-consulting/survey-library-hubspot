@@ -127,6 +127,11 @@ $label-bottom-padding: var(--sjs-base-label-bottom-padding);
 $input-color: var(--sjs-input-color);
 $input-font-size: var(--sjs-input-font-size);
 $input-padding: var(--sjs-input-padding);
+$button-text-color: var(--sjs-button-text-color);
+$button-background-color: var(--sjs-button-background-color);
+$button-hover-background-color: var(--sjs-button-hover-background-color);
+$button-hover-text-color: var(--sjs-button-hover-text-color);
+$button-padding: var(--sjs-button-padding);
 
 //call  @include useEditorFontSize before using this variable;
 $font-editorfont-size: var(--sjs-internal-font-editorfont-size);
