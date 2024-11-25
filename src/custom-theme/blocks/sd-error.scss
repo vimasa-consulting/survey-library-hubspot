@@ -3,10 +3,10 @@
   padding: calcSize(1) calcSize(1.5);
   border-radius: calcCornerRadius(1);
   line-height: calcLineHeight(1);
-  font-size: calcFontSize(0.75);
+  font-size: var(--sjs-error-font-size);
   font-weight: 600;
   text-align: left;
-  color: $red;
+  color: var(--sjs-error-font-color);
   white-space: normal;
   width: 100%;
   background-color: $red-light;

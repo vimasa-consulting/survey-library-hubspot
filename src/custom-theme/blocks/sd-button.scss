@@ -48,8 +48,8 @@
 }
 
 .sd-btn--action:hover {
-  color: $primary-foreground;
-  background-color: $primary-background-dark;
+  color: $button-hover-text-color;
+  background-color: $button-hover-background-color;
 }
 
 .sd-btn--action:disabled {
